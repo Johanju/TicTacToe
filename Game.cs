@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,18 +11,23 @@ namespace TicTacToe
     public class Game
     {
         public int[,] board = {
-            { 0, 0, 0 }, 
+            { 0, 0, 0 },
             { 0, 0, 0 },
             { 0, 0, 0 }};
         public int round = 0;
         public int currentPlayer;
         public bool Gameover = false;
+        public string winner = "";
+        private Dictionary<int, User> Users = new Dictionary<int, User>();
         // Player with X-symbol is always 1 and O-symbol is -1
-        private Dictionary<int, string> Tokens = new Dictionary<int, string>{{ -1, "O" }, { 0, " " }, { 1, "X" }};
+        private readonly Dictionary<int, string> Tokens = new Dictionary<int, string>{{ -1, "O" }, { 0, " " }, { 1, "X" }};
 
-        public Game(int startPlayer)
+        public Game(int starter, User[] users)
         {
-            currentPlayer = startPlayer;
+            currentPlayer = starter;
+            Users = new Dictionary<int, User> { 
+                { users[0].PlayerToken, users[0] }, 
+                { users[1].PlayerToken, users[1] }};
         }
 
         public void PrintBoard()
@@ -36,7 +42,7 @@ namespace TicTacToe
             Console.WriteLine(b);
         }
 
-        public bool CheckWin(int col, int row) // Sloppy Win checker
+        public bool CheckWin(int col, int row) // Sloppy Win checker, only checks if the lastest player won
         {
             int tempval = currentPlayer * 3;
             int colsum = 0;
@@ -61,6 +67,8 @@ namespace TicTacToe
             }
             if (colsum == tempval || rowsum == tempval || diagsum == tempval || rdiagsum == tempval)
             {
+                winner = Tokens[currentPlayer];
+                Gameover = true;
                 return true;
             }
             return false;
@@ -68,12 +76,15 @@ namespace TicTacToe
 
         public void ChangeTurn()
         {
+            currentPlayer = -currentPlayer;
+            /*
             if (currentPlayer == -1) 
             {
                 currentPlayer = 1;
                 return;
             }
             currentPlayer = -1;
+            */
         }
 
         public bool ValidTile(int col, int row)
@@ -87,7 +98,6 @@ namespace TicTacToe
 
         public bool Move(int col, int row)
         {
-            //Console.WriteLine(string.Format("Trying tile: {0} | Index: [{1}, {2}] | IsValid: {3}", tile, col, row, ValidTile(col, row)));
             if (board[col, row] != 0)
             {
                 return false;
@@ -97,58 +107,40 @@ namespace TicTacToe
             return true;
         }
 
-        public void Start()
+        public void Restart()
+        {
+            board = new int[3, 3]{
+            { 0, 0, 0 },
+            { 0, 0, 0 },
+            { 0, 0, 0 }};
+            winner = "";
+            Gameover = false;
+            currentPlayer = -currentPlayer;
+            round = 0;
+        }
+
+        public void Play()
         {
             while (!Gameover)
             {
                 Console.Clear();
-                Console.WriteLine(string.Format("Player {0} turn", Tokens[currentPlayer]));
+                Console.WriteLine(string.Format("Player {0} turn : Round {1}", Tokens[currentPlayer], round));
                 PrintBoard();
-                int tile;
-                int col;
-                int row;
-                do
+                int[] move = Users[currentPlayer].GetMove(round, board);
+                Move(move[0], move[1]);
+                if (CheckWin(move[0], move[1]))
                 {
-                    Console.Write("Choose a tile: ");
-                    string val = Console.ReadLine();
-                    if (val != null && val.Length == 1)
-                    {
-                        try
-                        {
-                            tile = Convert.ToInt32(val);
-                            tile -= 1;
-                            col = tile / 3;
-                            row = tile - (col * 3);
-                            if (Move(col, row))
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                Console.WriteLine("You have to input a empty tile between 1 - 9");
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            Console.WriteLine("Inputed tile has to be a number");
-                            throw;
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("You have to input a empty tile between 1 - 9");
-                    }
+                    Console.Clear();
+                    Console.WriteLine(string.Format("Player {0} Won!", Tokens[currentPlayer]));
+                    PrintBoard();
+                    break;
                 }
-                while (true);
-                if (round > 4)
+                else if (round == 9)
                 {
-                    if (CheckWin(col, row))
-                    {
-                        Console.Clear();
-                        PrintBoard();
-                        Console.WriteLine(string.Format("Player {0} WON!", Tokens[currentPlayer]));
-                        Gameover = true;
-                    }
+                    Console.Clear();
+                    Console.WriteLine("Draw!");
+                    PrintBoard();
+                    break;
                 }
                 ChangeTurn();
             }
